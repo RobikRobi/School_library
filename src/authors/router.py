@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from sqlalchemy.orm import selectinload, joinedload
 from sqlalchemy import select
 
 from src.models.model import Author, Book
@@ -63,8 +63,11 @@ async def add_authors(author_data:CreateAuthor, session:AsyncSession = Depends(g
 # Получение всех авторов
 @app.get("/")
 async def get_authors(session:AsyncSession = Depends(get_session)):
-    profiles = await session.scalars(select(Author))
-    return profiles.all()
+    stmt = select(Author).options(selectinload(Author.books))
+    result = await session.execute(stmt)
+    authors = result.scalars().all() 
+    
+    return authors
 
 # Получение автора по id
 @app.get("/{author_id}", response_model=ThisAuthor)

@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Optional
+from src.books.shema import BookResponse
 
 
 class CreateAuthor(BaseModel):
@@ -15,5 +16,19 @@ class ThisAuthor(BaseModel):
 
 
 class AuthorBookCreate(BaseModel):
+
     author_name: str
     book_title: str
+
+
+class AuthorShema(BaseModel):
+
+    name: str
+
+class AuthorResponse(BaseModel):
+    id: int
+    name: str
+    books: List[BookResponse]
+    
+    class Config:
+        from_attributes = True

@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
 from src.models.model import Author, Book
+from src.authors.shema import AuthorShema
 from src.books.shema import CreateBook
 from src.db import get_session
 
@@ -30,3 +31,28 @@ async def add_books(book_data:CreateBook, session:AsyncSession = Depends(get_ses
         "title": new_book.titel
     }
 
+# Получение всех книг
+@app.get("/")
+async def get_books(session:AsyncSession = Depends(get_session)):
+    books = await session.scalars(select(Book))
+    return books.all()
+
+
+# Получение всех книг с авторами
+@app.get("/books_authors", response_model=list[AuthorShema])
+async def get_books(session:AsyncSession = Depends(get_session)):
+    books = await session.scalar(select(Book).options(
+        selectinload(Book.authors)
+    ))
+    return books.all()
+
+
+# # Получение автора по id
+# @app.get("/{author_id}", response_model=ThisAuthor)
+# async def get_author_id(author_id: int, session: AsyncSession = Depends(get_session)):
+#     author = await session.scalar(select(Author).where(Author.id == author_id))
+
+#     if not author:
+#         raise HTTPException(status_code=404, detail="Author not found")
+
+#     return author
