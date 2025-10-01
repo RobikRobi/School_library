@@ -3,8 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
-from src.models.model import Author, Book
-from src.authors.shema import AuthorShema
+from src.models.model import Book
 from src.books.shema import CreateBook
 from src.db import get_session
 
@@ -28,23 +27,24 @@ async def add_books(book_data:CreateBook, session:AsyncSession = Depends(get_ses
     
     return {
         "id": new_book.id,
-        "title": new_book.titel
+        "titel": new_book.titel
     }
 
-# Получение всех книг
-@app.get("/")
-async def get_books(session:AsyncSession = Depends(get_session)):
-    books = await session.scalars(select(Book))
-    return books.all()
+# # Получение всех книг
+# @app.get("/")
+# async def get_books(session:AsyncSession = Depends(get_session)):
+#     books = await session.scalars(select(Book))
+#     return books.all()
 
 
 # Получение всех книг с авторами
-@app.get("/books_authors", response_model=list[AuthorShema])
+@app.get("/books_authors")
 async def get_books(session:AsyncSession = Depends(get_session)):
-    books = await session.scalar(select(Book).options(
-        selectinload(Book.authors)
-    ))
-    return books.all()
+    stmt = select(Book).options(selectinload(Book.authors))
+    result = await session.execute(stmt)
+    books = result.scalars().all()
+
+    return books
 
 
 # # Получение автора по id

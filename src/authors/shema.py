@@ -32,3 +32,8 @@ class AuthorResponse(BaseModel):
     
     class Config:
         from_attributes = True
+
+
+class AddBookToAuthor(BaseModel):
+    author_id: int
+    book_title: str

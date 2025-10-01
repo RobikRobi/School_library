@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload, joinedload
+from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
 from src.models.model import Author, Book
-from src.authors.shema import CreateAuthor, AuthorBookCreate, ThisAuthor
+from src.authors.shema import CreateAuthor, AuthorBookCreate, ThisAuthor, AddBookToAuthor
 from src.db import get_session
 
 app = APIRouter(prefix="/authors", tags=["Authors"])
@@ -60,7 +60,7 @@ async def add_authors(author_data:CreateAuthor, session:AsyncSession = Depends(g
         "name": new_author.name,
     }
 
-# Получение всех авторов
+# Получение всех авторов c книгами
 @app.get("/")
 async def get_authors(session:AsyncSession = Depends(get_session)):
     stmt = select(Author).options(selectinload(Author.books))
@@ -68,6 +68,45 @@ async def get_authors(session:AsyncSession = Depends(get_session)):
     authors = result.scalars().all() 
     
     return authors
+
+
+# Добавление книги к существующему автору
+@app.post("/add-book-to-author")
+async def add_book_to_author(data: AddBookToAuthor, session: AsyncSession = Depends(get_session)):
+    # ищем автора
+    author = await session.scalar(
+        select(Author).options(selectinload(Author.books)).where(Author.id == data.author_id)
+    )
+    if not author:
+        raise HTTPException(status_code=404, detail="Author not found")
+
+    # проверяем, есть ли уже такая книга
+    book = await session.scalar(select(Book).where(Book.titel == data.book_title))
+    if not book:
+        book = Book(titel=data.book_title)
+        session.add(book)
+        await session.flush()  # чтобы получить id книги до commit
+
+    # проверка на дубликат связи
+    if book in author.books:
+        raise HTTPException(status_code=400, detail="This book is already linked to the author")
+
+    # связываем
+    author.books.append(book)
+
+    await session.commit()
+    await session.refresh(author)
+
+    return {
+        "author": {
+            "id": author.id,
+            "name": author.name
+        },
+        "book": {
+            "id": book.id,
+            "title": book.titel
+        }
+    }
 
 # Получение автора по id
 @app.get("/{author_id}", response_model=ThisAuthor)
