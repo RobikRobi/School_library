@@ -4,7 +4,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
 from src.models.model import Book
-from src.books.shema import CreateBook
+from src.books.shema import CreateBook, UpdateBook
 from src.db import get_session
 
 app = APIRouter(prefix="/books", tags=["Books"])
@@ -30,12 +30,6 @@ async def add_books(book_data:CreateBook, session:AsyncSession = Depends(get_ses
         "titel": new_book.titel
     }
 
-# # Получение всех книг
-# @app.get("/")
-# async def get_books(session:AsyncSession = Depends(get_session)):
-#     books = await session.scalars(select(Book))
-#     return books.all()
-
 
 # Получение всех книг с авторами
 @app.get("/books_authors")
@@ -47,12 +41,54 @@ async def get_books(session:AsyncSession = Depends(get_session)):
     return books
 
 
-# # Получение автора по id
-# @app.get("/{author_id}", response_model=ThisAuthor)
-# async def get_author_id(author_id: int, session: AsyncSession = Depends(get_session)):
-#     author = await session.scalar(select(Author).where(Author.id == author_id))
+# Изменение книги
+@app.put("/update/{book_id}")
+async def update_author(book_id: int, data: UpdateBook, session: AsyncSession = Depends(get_session)):
+    # Находим автора по id
+    book = await session.scalar(select(Book).where(Book.id == book_id))
+    
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    # Обновляем только имя
+    if data.titel is not None:
+        book.titel = data.titel
+    
+    await session.commit()
+    await session.refresh(book)
+    
+    return {
+        "id": book.id,
+        "titel": book.titel,
+        "message": "Book updated successfully"
+    }
 
-#     if not author:
-#         raise HTTPException(status_code=404, detail="Author not found")
 
-#     return author
+# Удаление книги по id
+@app.delete("/{book_id}")
+async def delete_author(book_id: int, session: AsyncSession = Depends(get_session)):
+    # Находим книгу по id вместе с его аторами
+    book = await session.scalar(
+        select(Book)
+        .options(selectinload(Book.authors))
+        .where(Book.id == book_id)
+    )
+    
+    if not book:
+        raise HTTPException(status_code=404, detail="Book not found")
+    
+    # Сохраняем информацию о книге
+    book_info = {
+        "id": book.id,
+        "titel": book.titel,
+        "books_count": len(book.authors)
+    }
+    
+    # Удаляем книгу
+    await session.delete(book)
+    await session.commit()
+    
+    return {
+        "message": "Book deleted successfully",
+        "deleted_book": book_info
+    }

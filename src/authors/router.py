@@ -142,7 +142,6 @@ async def update_author(author_id: int, data: UpdateAuthor, session: AsyncSessio
     }
 
 
-
 # Удаление автора по id
 @app.delete("/{author_id}")
 async def delete_author(author_id: int, session: AsyncSession = Depends(get_session)):
