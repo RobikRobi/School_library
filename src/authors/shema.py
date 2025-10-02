@@ -37,3 +37,9 @@ class AuthorResponse(BaseModel):
 class AddBookToAuthor(BaseModel):
     author_id: int
     book_title: str
+
+
+class UpdateAuthor(BaseModel):
+
+    name: str | None = None
+    book_ids: List[int] | None = None
